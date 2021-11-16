@@ -36,17 +36,44 @@ fn main() -> std::io::Result<()> {
         fileLength = buf_reader.seek(SeekFrom::End(0))?;
         prevFileLength = fileLength;
         println!("The file is {} bytes long.",fileLength);
+
+        loop {
+            match receiver.recv() {
+                Ok(mut event) =>  {  
+                match &mut event{
+                    notify::DebouncedEvent::NoticeWrite(_) => {
+                        //println!("Uhg! it worked!");
+                        displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
+                        println!("prevFileLength : {}", prevFileLength);
+                    },
+                    notify::DebouncedEvent::NoticeRemove(_) => {}
+                    notify::DebouncedEvent::Write(_) => {},
+                    notify::DebouncedEvent::Chmod(_) => {},
+                    notify::DebouncedEvent::Remove(_) => {}
+                    notify::DebouncedEvent::Rename(_, _) => {}
+                    notify::DebouncedEvent::Rescan => {}
+                    notify::DebouncedEvent::Error(_, _) => {},
+                    notify::DebouncedEvent::Create(x) => {}
+                }
+                //println!("{:?}", event);
+                },
+                Err(e) => println!("watch error: {:?}", e),
+            }
+            //displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
+            
+            // displayFile(Path::new(target_path).as_os_str().to_str().unwrap().to_string(), fileLength);
+        }
+    }
+    else{
+        loop {
+            match receiver.recv() {
+               Ok(event) => println!("{:?}", event),
+               Err(e) => println!("watch error: {:?}", e),
+            }
+        }
     }
         
-    loop {
-        match receiver.recv() {
-            Ok(event) => println!("{:?}", event),
-            Err(e) => println!("watch error: {:?}", e),
-        }
-        displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
-        println!("prevFileLength : {}", prevFileLength);
-        // displayFile(Path::new(target_path).as_os_str().to_str().unwrap().to_string(), fileLength);
-    }
+    
    
 }
 
