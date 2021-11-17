@@ -10,7 +10,6 @@ use std::path::Path;
 use std::sync::mpsc::Receiver;
 use notify::DebouncedEvent;
 
-
 fn main() -> std::io::Result<()> {
     // get commmand line args -- need path to watch
     let args: Vec<String> = env::args().collect();
@@ -31,7 +30,7 @@ fn main() -> std::io::Result<()> {
     // If the user supplies only a path then we'll display all
     // files which are altered, but won't tail any file.
     if Path::new(target_path).is_file(){
-        processFile((target_path).to_string(), receiver);
+        processFile((target_path).to_string(), receiver,true);
         Ok(())
     }
     else{
@@ -44,7 +43,7 @@ fn main() -> std::io::Result<()> {
     }
 }
 
-fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>)-> std::io::Result<()>{
+fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>, continuous : bool)-> std::io::Result<()>{
     let file = File::open(&mut target_path)?;
     let mut fileLength : u64 = 0;
     let mut prevFileLength : u64 = 0;
@@ -74,6 +73,9 @@ fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>)-> 
                 //println!("{:?}", event);
                 },
                 Err(e) => println!("watch error: {:?}", e),
+            }
+            if !continuous{
+                return Ok(());
             }
             //displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
             
@@ -122,6 +124,6 @@ fn test_processFile(){
     // below will be monitored for changes.
     
     watcher.watch("3rd.one", RecursiveMode::Recursive).unwrap();
-    processFile("3rd.one".to_string(), receiver);
+    processFile("3rd.one".to_string(), receiver, false);
 
 }
