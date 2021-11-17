@@ -7,32 +7,48 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::path::Path;
+use std::sync::mpsc::Receiver;
+use notify::DebouncedEvent;
+
 
 fn main() -> std::io::Result<()> {
     // get commmand line args -- need path to watch
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
 
-    let mut prevFileLength : u64 = 0;
-    
     // Create a channel to receive the events.
     let (sender, receiver) = channel();
-
+    
     // Create a watcher object, delivering debounced events.
     // The notification back-end is selected based on the platform.
     let mut watcher = watcher(sender, Duration::from_secs(1)).unwrap();
 
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
-    let target_path = &args[1];
+    let mut target_path = &args[1];
     watcher.watch(target_path, RecursiveMode::Recursive).unwrap();
 
-    let file = File::open(target_path)?;
-    let mut fileLength : u64 = 0;
     // If the user supplies only a path then we'll display all
     // files which are altered, but won't tail any file.
     if Path::new(target_path).is_file(){
-        let mut buf_reader = BufReader::new(file);
+        processFile((target_path).to_string(), receiver);
+        Ok(())
+    }
+    else{
+        loop {
+            match receiver.recv() {
+               Ok(event) => println!("{:?}", event),
+               Err(e) => println!("watch error: {:?}", e),
+            }
+        }
+    }
+}
+
+fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>)-> std::io::Result<()>{
+    let file = File::open(&mut target_path)?;
+    let mut fileLength : u64 = 0;
+    let mut prevFileLength : u64 = 0;
+    let mut buf_reader = BufReader::new(file);
         fileLength = buf_reader.seek(SeekFrom::End(0))?;
         prevFileLength = fileLength;
         println!("The file is {} bytes long.",fileLength);
@@ -63,18 +79,7 @@ fn main() -> std::io::Result<()> {
             
             // displayFile(Path::new(target_path).as_os_str().to_str().unwrap().to_string(), fileLength);
         }
-    }
-    else{
-        loop {
-            match receiver.recv() {
-               Ok(event) => println!("{:?}", event),
-               Err(e) => println!("watch error: {:?}", e),
-            }
-        }
-    }
         
-    
-   
 }
 
 fn displayFile(path : String, mut inLength: u64, prevFileLength : &mut u64)-> std::io::Result<()>{
@@ -103,4 +108,20 @@ fn displayFile(path : String, mut inLength: u64, prevFileLength : &mut u64)-> st
         println!("The line is {} bytes long", after - before);
     }
     Ok(())
+}
+
+#[test]
+fn test_processFile(){
+    let (sender, receiver) = channel();
+    
+    // Create a watcher object, delivering debounced events.
+    // The notification back-end is selected based on the platform.
+    let mut watcher = watcher(sender, Duration::from_secs(1)).unwrap();
+
+    // Add a path to be watched. All files and directories at that path and
+    // below will be monitored for changes.
+    
+    watcher.watch("3rd.one", RecursiveMode::Recursive).unwrap();
+    processFile("3rd.one".to_string(), receiver);
+
 }
