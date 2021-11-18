@@ -13,7 +13,11 @@ use notify::DebouncedEvent;
 fn main() -> std::io::Result<()> {
     // get commmand line args -- need path to watch
     let args: Vec<String> = env::args().collect();
-    println!("{:?}", args);
+    if args.len() < 2{
+        println!("Please supply a valid directory and/or filename.");
+        println!("Usage : $ watcher [/path/][filename] ");
+        return Ok(());
+    }
 
     // Create a channel to receive the events.
     let (sender, receiver) = channel();
@@ -25,11 +29,17 @@ fn main() -> std::io::Result<()> {
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
     let mut target_path = &args[1];
+    let targetFileExists = Path::new(target_path).is_file();
+    let targetDirExists = Path::new(target_path).exists();
+    if !targetFileExists && !targetDirExists{
+        println!("Please supply a valid directory and/or filename");
+        println!("Usage : $ watcher [/path/][filename] ");
+        return Ok(());
+    }
     watcher.watch(target_path, RecursiveMode::Recursive).unwrap();
-
     // If the user supplies only a path then we'll display all
     // files which are altered, but won't tail any file.
-    if Path::new(target_path).is_file(){
+    if targetFileExists{
         processFile((target_path).to_string(), receiver,true);
         Ok(())
     }
