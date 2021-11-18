@@ -44,12 +44,8 @@ fn main() -> std::io::Result<()> {
         Ok(())
     }
     else{
-        loop {
-            match receiver.recv() {
-               Ok(event) => println!("{:?}", event),
-               Err(e) => println!("watch error: {:?}", e),
-            }
-        }
+        processDirectory(receiver);
+        Ok(())
     }
 }
 
@@ -92,6 +88,15 @@ fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>, co
             // displayFile(Path::new(target_path).as_os_str().to_str().unwrap().to_string(), fileLength);
         }
         
+}
+
+fn processDirectory(receiver: Receiver<DebouncedEvent>){
+    loop {
+        match receiver.recv() {
+           Ok(event) => println!("{:?}", event),
+           Err(e) => println!("watch error: {:?}", e),
+        }
+    }
 }
 
 fn displayFile(path : String, mut inLength: u64, prevFileLength : &mut u64)-> std::io::Result<()>{
