@@ -36,7 +36,7 @@ fn main() -> std::io::Result<()> {
         println!("Usage : $ watcher [/path/][filename] ");
         return Ok(());
     }
-    watcher.watch(target_path, RecursiveMode::Recursive).unwrap();
+    watcher.watch(target_path, RecursiveMode::Recursive);
     // If the user supplies only a path then we'll display all
     // files which are altered, but won't tail any file.
     if targetFileExists{
