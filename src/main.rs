@@ -9,6 +9,8 @@ use std::io::SeekFrom;
 use std::path::Path;
 use std::sync::mpsc::Receiver;
 use notify::DebouncedEvent;
+use std::fs::OpenOptions;
+use std::os::windows::fs::OpenOptionsExt;
 
 fn main() -> std::io::Result<()> {
     // get commmand line args -- need path to watch
@@ -30,6 +32,7 @@ fn main() -> std::io::Result<()> {
     // below will be monitored for changes.
     let mut target_path = &args[1];
     let targetFileExists = Path::new(target_path).is_file();
+    println!("Watching {}", Path::new(target_path).display());
     let targetDirExists = Path::new(target_path).exists();
     if !targetFileExists && !targetDirExists{
         println!("Please supply a valid directory and/or filename");
@@ -50,31 +53,35 @@ fn main() -> std::io::Result<()> {
 }
 
 fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>, continuous : bool)-> std::io::Result<()>{
-    let file = File::open(&mut target_path)?;
+    let file = OpenOptions::new().access_mode(0).open(&mut target_path)?;
     let mut fileLength : u64 = 0;
     let mut prevFileLength : u64 = 0;
     let mut buf_reader = BufReader::new(file);
         fileLength = buf_reader.seek(SeekFrom::End(0))?;
         prevFileLength = fileLength;
-        println!("The file is {} bytes long.",fileLength);
+        println!("processFile -- The file is {} bytes long.",fileLength);
 
         loop {
             match receiver.recv() {
                 Ok(mut event) =>  {  
                 match &mut event{
                     notify::DebouncedEvent::NoticeWrite(_) => {
-                        //println!("Uhg! it worked!");
                         displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
                         println!("prevFileLength : {}", prevFileLength);
                     },
-                    notify::DebouncedEvent::NoticeRemove(_) => {}
-                    notify::DebouncedEvent::Write(_) => {},
-                    notify::DebouncedEvent::Chmod(_) => {},
-                    notify::DebouncedEvent::Remove(_) => {}
-                    notify::DebouncedEvent::Rename(_, _) => {}
-                    notify::DebouncedEvent::Rescan => {}
-                    notify::DebouncedEvent::Error(_, _) => {},
-                    notify::DebouncedEvent::Create(x) => {}
+                    notify::DebouncedEvent::Error(err, Some(file_path)) => {
+                        println!("Error: {}, {}",err,file_path.as_path().display().to_string())
+                    },
+                    other => {},
+                    //other => {println!("{:?}",other)},
+                    // notify::DebouncedEvent::NoticeRemove(_) => {},
+                    // notify::DebouncedEvent::Write(_) => {},
+                    // notify::DebouncedEvent::Chmod(_) => {},
+                    // notify::DebouncedEvent::Remove(_) => {}
+                    // notify::DebouncedEvent::Rename(_, _) => {}
+                    // notify::DebouncedEvent::Rescan => {}
+                    // notify::DebouncedEvent::Error(_, _) => {},
+                    // notify::DebouncedEvent::Create(x) => {}
                 }
                 //println!("{:?}", event);
                 },
@@ -92,15 +99,25 @@ fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>, co
 
 fn processDirectory(receiver: Receiver<DebouncedEvent>){
     loop {
+        //println!("{}", receiver.recv().unwrap());
         match receiver.recv() {
-           Ok(event) => println!("{:?}", event),
+           Ok(event) => {
+               match  event{
+                notify::DebouncedEvent::Write(file_path) => {println!("Write: {}",file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Chmod(file_path) => {println!("Chmod: {}",file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Remove(file_path) => {println!("Remove: {}",file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Rename(file_path, _) => {println!("Rename: {}",file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Error(err,Some(file_path)) => {println!("Error: {}, {}",err,file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Create(file_path) => {println!("Create: {}",file_path.as_path().display().to_string())},
+                other => {}
+                }
+            },
            Err(e) => println!("watch error: {:?}", e),
         }
     }
 }
 
 fn displayFile(path : String, mut inLength: u64, prevFileLength : &mut u64)-> std::io::Result<()>{
-    println!("in displayFile() {:?}", path);
     // if inLength <= 0 then no file has been passed (only path)
     if inLength > 0{
         let file = File::open(path)?;
