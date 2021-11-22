@@ -10,7 +10,6 @@ use std::path::Path;
 use std::sync::mpsc::Receiver;
 use notify::DebouncedEvent;
 use std::fs::OpenOptions;
-use std::os::windows::fs::OpenOptionsExt;
 
 fn main() -> std::io::Result<()> {
     // get commmand line args -- need path to watch
@@ -53,7 +52,7 @@ fn main() -> std::io::Result<()> {
 }
 
 fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>, continuous : bool)-> std::io::Result<()>{
-    let file = OpenOptions::new().access_mode(0).open(&mut target_path)?;
+    let file = File::open(&mut target_path)?;
     let mut fileLength : u64 = 0;
     let mut prevFileLength : u64 = 0;
     let mut buf_reader = BufReader::new(file);
