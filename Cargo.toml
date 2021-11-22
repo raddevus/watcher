@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 notify = "4.0.17"
 # notify { git = "https://github.com/notify-rs/notify" }
+chrono = "0.4"

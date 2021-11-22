@@ -10,6 +10,7 @@ use std::path::Path;
 use std::sync::mpsc::Receiver;
 use notify::DebouncedEvent;
 use std::fs::OpenOptions;
+use chrono;
 
 fn main() -> std::io::Result<()> {
     // get commmand line args -- need path to watch
@@ -101,13 +102,14 @@ fn processDirectory(receiver: Receiver<DebouncedEvent>){
         //println!("{}", receiver.recv().unwrap());
         match receiver.recv() {
            Ok(event) => {
-               match  event{
-                notify::DebouncedEvent::Write(file_path) => {println!("Write: {}",file_path.as_path().display().to_string())},
-                notify::DebouncedEvent::Chmod(file_path) => {println!("Chmod: {}",file_path.as_path().display().to_string())},
-                notify::DebouncedEvent::Remove(file_path) => {println!("Remove: {}",file_path.as_path().display().to_string())},
-                notify::DebouncedEvent::Rename(file_path, _) => {println!("Rename: {}",file_path.as_path().display().to_string())},
-                notify::DebouncedEvent::Error(err,Some(file_path)) => {println!("Error: {}, {}",err,file_path.as_path().display().to_string())},
-                notify::DebouncedEvent::Create(file_path) => {println!("Create: {}",file_path.as_path().display().to_string())},
+            let current_time = chrono::offset::Local::now().format("%Y-%m-%d %H:%M:%S");
+            match  event{
+                notify::DebouncedEvent::Write(file_path) => {println!("{} Write: {}",current_time,file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Chmod(file_path) => {println!("{} Chmod: {}",current_time,file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Remove(file_path) => {println!("{} Remove: {}",current_time,file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Rename(file_path, _) => {println!("{} Rename: {}",current_time,file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Error(err,Some(file_path)) => {println!("{} Error: {}, {}",current_time,err,file_path.as_path().display().to_string())},
+                notify::DebouncedEvent::Create(file_path) => {println!("{} Create: {}",current_time,file_path.as_path().display().to_string())},
                 other => {}
                 }
             },
