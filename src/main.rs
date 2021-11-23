@@ -29,7 +29,7 @@ fn main() -> std::io::Result<()> {
 
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
-    let mut target_path = &args[1];
+    let target_path = &args[1];
     let target_file_exists = Path::new(target_path).is_file();
     println!("Watching {}", Path::new(target_path).display());
     let target_dir_exists = Path::new(target_path).exists();
@@ -42,36 +42,35 @@ fn main() -> std::io::Result<()> {
     // If the user supplies only a path then we'll display all
     // files which are altered, but won't tail any file.
     if target_file_exists{
-        processFile((target_path).to_string(), receiver,true);
+        process_file((target_path).to_string(), receiver,true);
         Ok(())
     }
     else{
-        processDirectory(receiver);
+        process_directory(receiver);
         Ok(())
     }
 }
 
-fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>, continuous : bool)-> std::io::Result<()>{
+fn process_file(mut target_path : String, receiver : Receiver<DebouncedEvent>, continuous : bool)-> std::io::Result<()>{
     let file = File::open(&mut target_path)?;
-    let mut fileLength : u64 = 0;
-    let mut prevFileLength : u64 = 0;
+    let mut prev_file_length : u64 = 0;
     let mut buf_reader = BufReader::new(file);
-    fileLength = buf_reader.seek(SeekFrom::End(0))?;
-    prevFileLength = fileLength;
-    println!("processFile -- The file is {} bytes long.",fileLength);
+    prev_file_length = buf_reader.seek(SeekFrom::End(0))?;
+
+    println!("process_file -- The file is {} bytes long.",prev_file_length);
 
     loop {
         match receiver.recv() {
             Ok(mut event) =>  {  
             match &mut event{
                 notify::DebouncedEvent::NoticeWrite(_) => {
-                    displayFile((target_path).to_string(), &mut prevFileLength);
-                    println!("prevFileLength : {}", prevFileLength);
+                    display_file((target_path).to_string(), &mut prev_file_length);
+                    println!("prev_file_length : {}", prev_file_length);
                 },
                 notify::DebouncedEvent::Error(err, Some(file_path)) => {
                     println!("Error: {}, {}",err,file_path.as_path().display().to_string())
                 },
-                other => {},
+                _other => {},
                 //other => {println!("{:?}",other)},
                 // notify::DebouncedEvent::NoticeRemove(_) => {},
                 // notify::DebouncedEvent::Write(_) => {},
@@ -89,13 +88,13 @@ fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>, co
         if !continuous{
             return Ok(());
         }
-        //displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
+        //display_file((target_path).to_string(), fileLength, &mut prev_file_length);
         
-        // displayFile(Path::new(target_path).as_os_str().to_str().unwrap().to_string(), fileLength);
+        // display_file(Path::new(target_path).as_os_str().to_str().unwrap().to_string(), fileLength);
     }
 }
 
-fn processDirectory(receiver: Receiver<DebouncedEvent>){
+fn process_directory(receiver: Receiver<DebouncedEvent>){
     loop {
         //println!("{}", receiver.recv().unwrap());
         match receiver.recv() {
@@ -108,7 +107,7 @@ fn processDirectory(receiver: Receiver<DebouncedEvent>){
                 notify::DebouncedEvent::Rename(file_path, _) => {println!("{} Rename: {}",current_time,file_path.as_path().display().to_string())},
                 notify::DebouncedEvent::Error(err,Some(file_path)) => {println!("{} Error: {}, {}",current_time,err,file_path.as_path().display().to_string())},
                 notify::DebouncedEvent::Create(file_path) => {println!("{} Create: {}",current_time,file_path.as_path().display().to_string())},
-                other => {}
+                _other => {}
                 }
             },
            Err(e) => println!("watch error: {:?}", e),
@@ -116,7 +115,7 @@ fn processDirectory(receiver: Receiver<DebouncedEvent>){
     }
 }
 
-fn displayFile(path : String, readBytePosition : &mut u64)-> std::io::Result<()>{
+fn display_file(path : String, read_byte_position : &mut u64)-> std::io::Result<()>{
 
     let file = File::open(path)?;
     let mut buf_reader = BufReader::new(file);
@@ -125,9 +124,9 @@ fn displayFile(path : String, readBytePosition : &mut u64)-> std::io::Result<()>
     
     //buf_reader.seek(SeekFrom::Start(499))?;
     
-    buf_reader.seek(SeekFrom::Start(*readBytePosition))?;
+    buf_reader.seek(SeekFrom::Start(*read_byte_position))?;
     //println!("The file is {} bytes long.",fileLength);
-    //let currentFilePos = buf_reader.seek(SeekFrom::Start(*prevFileLength))?;
+    //let currentFilePos = buf_reader.seek(SeekFrom::Start(*prev_file_length))?;
     
     let before = buf_reader.stream_position()?;
     buf_reader.read_to_string(&mut contents);
@@ -136,7 +135,7 @@ fn displayFile(path : String, readBytePosition : &mut u64)-> std::io::Result<()>
     // buf_reader.read_line(&mut String::new())?;
     let after = buf_reader.stream_position()?;
     //inLength += after;
-    *readBytePosition += after-before;
+    *read_byte_position += after-before;
 
     println!("The line is {} bytes long", after - before);
     
@@ -144,7 +143,7 @@ fn displayFile(path : String, readBytePosition : &mut u64)-> std::io::Result<()>
 }
 
 #[test]
-fn test_processFile(){
+fn test_process_file(){
     let (sender, receiver) = channel();
     
     // Create a watcher object, delivering debounced events.
@@ -155,6 +154,6 @@ fn test_processFile(){
     // below will be monitored for changes.
     
     watcher.watch("3rd.one", RecursiveMode::Recursive).unwrap();
-    processFile("3rd.one".to_string(), receiver, false);
+    process_file("3rd.one".to_string(), receiver, false);
 
 }
