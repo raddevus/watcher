@@ -61,27 +61,33 @@ fn process_file(mut target_path : String, receiver : Receiver<DebouncedEvent>, c
 
     loop {
         match receiver.recv() {
-            Ok(mut event) =>  {  
-            match &mut event{
-                notify::DebouncedEvent::NoticeWrite(_) => {
-                    display_file((target_path).to_string(), &mut prev_file_length);
-                    println!("prev_file_length : {}", prev_file_length);
-                },
-                notify::DebouncedEvent::Error(err, Some(file_path)) => {
-                    println!("Error: {}, {}",err,file_path.as_path().display().to_string())
-                },
-                _other => {},
-                //other => {println!("{:?}",other)},
-                // notify::DebouncedEvent::NoticeRemove(_) => {},
-                // notify::DebouncedEvent::Write(_) => {},
-                // notify::DebouncedEvent::Chmod(_) => {},
-                // notify::DebouncedEvent::Remove(_) => {}
-                // notify::DebouncedEvent::Rename(_, _) => {}
-                // notify::DebouncedEvent::Rescan => {}
-                // notify::DebouncedEvent::Error(_, _) => {},
-                // notify::DebouncedEvent::Create(x) => {}
-            }
-            //println!("{:?}", event);
+            Ok(event) =>  {  
+                match event{
+                    notify::DebouncedEvent::NoticeWrite(_) => {
+                        display_file((target_path).to_string(), &mut prev_file_length);
+                        // println!("prev_file_length : {}", prev_file_length);  // ## for test
+                    },
+                    notify::DebouncedEvent::Error(err, Some(file_path)) => {
+                        println!("Error: {}, {}",err,file_path.as_path().display().to_string())
+                    },
+                    notify::DebouncedEvent::Chmod(_) => {
+                        // #### NOTE - I'm actually attempting to handle the file remove
+                        // #### however, for some reason in this branch the rm command
+                        // #### on the file is always seen as a chmod.
+                        println!("The file was deleted or modified & the app cannot access it.\n Exiting...");
+                        std::process::exit(0x100);
+                    },
+                    _other => {},
+                    // other => {println!("{:?}",other)},
+                    // notify::DebouncedEvent::NoticeRemove(_) => {},
+                    // notify::DebouncedEvent::Write(_) => {},
+                    // notify::DebouncedEvent::Chmod(_) => {},
+                    // notify::DebouncedEvent::Remove(_) => {},
+                    // notify::DebouncedEvent::Rename(_, _) => {}
+                    // notify::DebouncedEvent::Rescan => {}
+                    // notify::DebouncedEvent::Error(_, _) => {},
+                    // notify::DebouncedEvent::Create(x) => {}
+                }
             },
             Err(e) => println!("watch error: {:?}", e),
         }
@@ -119,25 +125,23 @@ fn display_file(path : String, read_byte_position : &mut u64)-> std::io::Result<
 
     let file = File::open(path)?;
     let mut buf_reader = BufReader::new(file);
-    println!("{}",buf_reader.seek(SeekFrom::End(0))?);
+    let current_length = buf_reader.seek(SeekFrom::End(0))?;
+    // println!("{}",current_length); // ## for testing
+    if current_length < *read_byte_position{
+        *read_byte_position = 0;
+    }
     let mut contents = String::new();
     
-    //buf_reader.seek(SeekFrom::Start(499))?;
-    
     buf_reader.seek(SeekFrom::Start(*read_byte_position))?;
-    //println!("The file is {} bytes long.",fileLength);
-    //let currentFilePos = buf_reader.seek(SeekFrom::Start(*prev_file_length))?;
     
     let before = buf_reader.stream_position()?;
     buf_reader.read_to_string(&mut contents);
     print!("{}",contents);
-    
-    // buf_reader.read_line(&mut String::new())?;
+
     let after = buf_reader.stream_position()?;
-    //inLength += after;
     *read_byte_position += after-before;
 
-    println!("The line is {} bytes long", after - before);
+    // println!("The line is {} bytes long", after - before); // ## for testing
     
     Ok(())
 }
