@@ -9,7 +9,6 @@ use std::io::SeekFrom;
 use std::path::Path;
 use std::sync::mpsc::Receiver;
 use notify::DebouncedEvent;
-use std::fs::OpenOptions;
 use chrono;
 
 fn main() -> std::io::Result<()> {
@@ -31,10 +30,10 @@ fn main() -> std::io::Result<()> {
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
     let mut target_path = &args[1];
-    let targetFileExists = Path::new(target_path).is_file();
+    let target_file_exists = Path::new(target_path).is_file();
     println!("Watching {}", Path::new(target_path).display());
-    let targetDirExists = Path::new(target_path).exists();
-    if !targetFileExists && !targetDirExists{
+    let target_dir_exists = Path::new(target_path).exists();
+    if !target_file_exists && !target_dir_exists{
         println!("Please supply a valid directory and/or filename");
         println!("Usage : $ watcher [/path/][filename] ");
         return Ok(());
@@ -42,7 +41,7 @@ fn main() -> std::io::Result<()> {
     watcher.watch(target_path, RecursiveMode::Recursive);
     // If the user supplies only a path then we'll display all
     // files which are altered, but won't tail any file.
-    if targetFileExists{
+    if target_file_exists{
         processFile((target_path).to_string(), receiver,true);
         Ok(())
     }
