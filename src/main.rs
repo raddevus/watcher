@@ -56,44 +56,43 @@ fn processFile(mut target_path : String, receiver : Receiver<DebouncedEvent>, co
     let mut fileLength : u64 = 0;
     let mut prevFileLength : u64 = 0;
     let mut buf_reader = BufReader::new(file);
-        fileLength = buf_reader.seek(SeekFrom::End(0))?;
-        prevFileLength = fileLength;
-        println!("processFile -- The file is {} bytes long.",fileLength);
+    fileLength = buf_reader.seek(SeekFrom::End(0))?;
+    prevFileLength = fileLength;
+    println!("processFile -- The file is {} bytes long.",fileLength);
 
-        loop {
-            match receiver.recv() {
-                Ok(mut event) =>  {  
-                match &mut event{
-                    notify::DebouncedEvent::NoticeWrite(_) => {
-                        displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
-                        println!("prevFileLength : {}", prevFileLength);
-                    },
-                    notify::DebouncedEvent::Error(err, Some(file_path)) => {
-                        println!("Error: {}, {}",err,file_path.as_path().display().to_string())
-                    },
-                    other => {},
-                    //other => {println!("{:?}",other)},
-                    // notify::DebouncedEvent::NoticeRemove(_) => {},
-                    // notify::DebouncedEvent::Write(_) => {},
-                    // notify::DebouncedEvent::Chmod(_) => {},
-                    // notify::DebouncedEvent::Remove(_) => {}
-                    // notify::DebouncedEvent::Rename(_, _) => {}
-                    // notify::DebouncedEvent::Rescan => {}
-                    // notify::DebouncedEvent::Error(_, _) => {},
-                    // notify::DebouncedEvent::Create(x) => {}
-                }
-                //println!("{:?}", event);
+    loop {
+        match receiver.recv() {
+            Ok(mut event) =>  {  
+            match &mut event{
+                notify::DebouncedEvent::NoticeWrite(_) => {
+                    displayFile((target_path).to_string(), &mut prevFileLength);
+                    println!("prevFileLength : {}", prevFileLength);
                 },
-                Err(e) => println!("watch error: {:?}", e),
+                notify::DebouncedEvent::Error(err, Some(file_path)) => {
+                    println!("Error: {}, {}",err,file_path.as_path().display().to_string())
+                },
+                other => {},
+                //other => {println!("{:?}",other)},
+                // notify::DebouncedEvent::NoticeRemove(_) => {},
+                // notify::DebouncedEvent::Write(_) => {},
+                // notify::DebouncedEvent::Chmod(_) => {},
+                // notify::DebouncedEvent::Remove(_) => {}
+                // notify::DebouncedEvent::Rename(_, _) => {}
+                // notify::DebouncedEvent::Rescan => {}
+                // notify::DebouncedEvent::Error(_, _) => {},
+                // notify::DebouncedEvent::Create(x) => {}
             }
-            if !continuous{
-                return Ok(());
-            }
-            //displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
-            
-            // displayFile(Path::new(target_path).as_os_str().to_str().unwrap().to_string(), fileLength);
+            //println!("{:?}", event);
+            },
+            Err(e) => println!("watch error: {:?}", e),
         }
+        if !continuous{
+            return Ok(());
+        }
+        //displayFile((target_path).to_string(), fileLength, &mut prevFileLength);
         
+        // displayFile(Path::new(target_path).as_os_str().to_str().unwrap().to_string(), fileLength);
+    }
 }
 
 fn processDirectory(receiver: Receiver<DebouncedEvent>){
@@ -117,30 +116,30 @@ fn processDirectory(receiver: Receiver<DebouncedEvent>){
     }
 }
 
-fn displayFile(path : String, mut inLength: u64, prevFileLength : &mut u64)-> std::io::Result<()>{
-    // if inLength <= 0 then no file has been passed (only path)
-    if inLength > 0{
-        let file = File::open(path)?;
-        let mut buf_reader = BufReader::new(file);
-        
-        let mut contents = String::new();
-        //buf_reader.seek(SeekFrom::Start(499))?;
-        
-        let fileLength = buf_reader.seek(SeekFrom::End(0))?;
-        println!("The file is {} bytes long.",fileLength);
-        let currentFilePos = buf_reader.seek(SeekFrom::Start(*prevFileLength))?;
-        
-        let before = buf_reader.stream_position()?;
-        buf_reader.read_to_string(&mut contents);
-        print!("{}",contents);
-        
-        // buf_reader.read_line(&mut String::new())?;
-        let after = buf_reader.stream_position()?;
-        inLength += after;
-        *prevFileLength += after-before;
+fn displayFile(path : String, readBytePosition : &mut u64)-> std::io::Result<()>{
 
-        println!("The line is {} bytes long", after - before);
-    }
+    let file = File::open(path)?;
+    let mut buf_reader = BufReader::new(file);
+    println!("{}",buf_reader.seek(SeekFrom::End(0))?);
+    let mut contents = String::new();
+    
+    //buf_reader.seek(SeekFrom::Start(499))?;
+    
+    buf_reader.seek(SeekFrom::Start(*readBytePosition))?;
+    //println!("The file is {} bytes long.",fileLength);
+    //let currentFilePos = buf_reader.seek(SeekFrom::Start(*prevFileLength))?;
+    
+    let before = buf_reader.stream_position()?;
+    buf_reader.read_to_string(&mut contents);
+    print!("{}",contents);
+    
+    // buf_reader.read_line(&mut String::new())?;
+    let after = buf_reader.stream_position()?;
+    //inLength += after;
+    *readBytePosition += after-before;
+
+    println!("The line is {} bytes long", after - before);
+    
     Ok(())
 }
 
