@@ -20,6 +20,11 @@ fn main() -> std::io::Result<()> {
         return Ok(());
     }
 
+    ctrlc::set_handler(move || {
+        println!("  Exiting fwx...");
+        std::process::exit(0x100);
+    }).expect("Error setting Ctrl-C handler");
+
     // Create a channel to receive the events.
     let (sender, receiver) = channel();
     
