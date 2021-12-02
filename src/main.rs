@@ -166,3 +166,19 @@ fn test_process_file(){
     process_file("3rd.one".to_string(), receiver, false);
 
 }
+
+#[test]
+fn test_display_file()-> std::io::Result<()>{
+    let target_path = "3rd.one";
+    let file = File::open(target_path)?;
+    
+    let mut buf_reader = BufReader::new(file);
+    let mut file_length = buf_reader.seek(SeekFrom::End(0))?;
+    
+    println!("file is {} bytes long.",file_length);
+    let mut bytes_back = file_length - 20;
+    
+    //prev_file_length = prev_file_length-50;
+    display_file((target_path).to_string(), &mut bytes_back);
+    Ok(())
+}
